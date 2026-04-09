@@ -1,0 +1,30 @@
+{
+  "name": "clubsphere",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:pages": "NEXT_PUBLIC_STATIC_EXPORT=true STATIC_EXPORT=true next build",
+    "postbuild:pages": "touch out/.nojekyll",
+    "deploy": "npm run build",
+    "deploy:pages": "npm run build:pages && touch out/.nojekyll && gh-pages -d out",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "firebase": "^12.11.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.4.1",
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.19",
+    "gh-pages": "^6.1.1",
+    "postcss": "8.4.39",
+    "tailwindcss": "3.4.7"
+  }
+}
