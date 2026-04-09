@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import SectionHeading from "../../components/SectionHeading";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -13,18 +13,8 @@ export default function AssistantPage() {
   const { user } = useAuth();
   const { pushToast } = useToast();
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [responsePoints, setResponsePoints] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedKey =
-      window.sessionStorage.getItem("clubsphere_groq_api_key") ||
-      process.env.NEXT_PUBLIC_GROQ_API_KEY ||
-      "";
-    setApiKey(storedKey);
-  }, []);
 
   const toPoints = (text) => {
     if (!text) return [];
@@ -47,9 +37,10 @@ export default function AssistantPage() {
       return;
     }
     if (!prompt.trim()) return;
-    if (isStaticExportMode && !apiKey.trim()) {
+    const staticApiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
+    if (isStaticExportMode && !staticApiKey.trim()) {
       setResponsePoints([
-        "Enter your Groq API key in the field above to use the assistant on this static deployment."
+        "AI assistant is not configured for this static build. Add NEXT_PUBLIC_GROQ_API_KEY to enable it."
       ]);
       return;
     }
@@ -61,7 +52,7 @@ export default function AssistantPage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey.trim()}`
+              Authorization: `Bearer ${staticApiKey.trim()}`
             },
             body: JSON.stringify({
               model: GROQ_MODEL,
@@ -108,26 +99,9 @@ export default function AssistantPage() {
       <SectionHeading
         eyebrow="AI Support"
         title="ClubSphere AI Assistant"
-        subtitle="Ask for coding help, project ideas, event themes, or documentation support. On GitHub Pages, the API key is entered at runtime instead of being bundled into the site."
+        subtitle="Ask for coding help, project ideas, event themes, or documentation support."
       />
       <div className="glass-card space-y-4 p-6">
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => {
-            const nextKey = e.target.value;
-            setApiKey(nextKey);
-            if (typeof window !== "undefined") {
-              window.sessionStorage.setItem("clubsphere_groq_api_key", nextKey);
-            }
-          }}
-          placeholder={
-            isStaticExportMode
-              ? "Paste your Groq API key for this browser session"
-              : "Server-side key mode active (optional field)"
-          }
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-cyan-400"
-        />
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
