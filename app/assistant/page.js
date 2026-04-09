@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SectionHeading from "../../components/SectionHeading";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { isStaticExportMode } from "../../lib/runtimeMode";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.1-8b-instant";
@@ -18,7 +19,10 @@ export default function AssistantPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedKey = window.sessionStorage.getItem("clubsphere_groq_api_key") || "";
+    const storedKey =
+      window.sessionStorage.getItem("clubsphere_groq_api_key") ||
+      process.env.NEXT_PUBLIC_GROQ_API_KEY ||
+      "";
     setApiKey(storedKey);
   }, []);
 
@@ -43,39 +47,54 @@ export default function AssistantPage() {
       return;
     }
     if (!prompt.trim()) return;
-    const key = apiKey.trim();
-    if (!key) {
-      setResponsePoints(["Enter your Groq API key in the field above to use the assistant on this static deployment."]);
+    if (isStaticExportMode && !apiKey.trim()) {
+      setResponsePoints([
+        "Enter your Groq API key in the field above to use the assistant on this static deployment."
+      ]);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(GROQ_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a concise assistant. Always respond in short bullet points only. No paragraphs."
+      const res = isStaticExportMode
+        ? await fetch(GROQ_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey.trim()}`
             },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7
-        })
-      });
+            body: JSON.stringify({
+              model: GROQ_MODEL,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a concise assistant. Always respond in short bullet points only. No paragraphs."
+                },
+                { role: "user", content: prompt }
+              ],
+              temperature: 0.7
+            })
+          })
+        : await fetch("/api/assistant", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ prompt })
+          });
+
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || "Groq API error");
+        const errText = await res.text();
+        try {
+          const parsed = JSON.parse(errText);
+          throw new Error(parsed?.message || "Groq API error");
+        } catch {
+          throw new Error(errText || "Groq API error");
+        }
       }
       const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content;
+      const text = isStaticExportMode ? data?.choices?.[0]?.message?.content : data?.text;
       setResponsePoints(toPoints(text) || ["No response returned from Groq."]);
     } catch (error) {
       setResponsePoints([error.message || "Failed to connect to Groq API."]);
@@ -102,7 +121,11 @@ export default function AssistantPage() {
               window.sessionStorage.setItem("clubsphere_groq_api_key", nextKey);
             }
           }}
-          placeholder="Paste your Groq API key for this browser session"
+          placeholder={
+            isStaticExportMode
+              ? "Paste your Groq API key for this browser session"
+              : "Server-side key mode active (optional field)"
+          }
           className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-cyan-400"
         />
         <textarea

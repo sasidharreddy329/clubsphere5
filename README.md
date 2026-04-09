@@ -103,6 +103,8 @@ Important:
 2. Add your API key:
 
 ```bash
+GROQ_API_KEY=...
+# Optional fallback for static builds:
 NEXT_PUBLIC_GROQ_API_KEY=...
 ```
 
